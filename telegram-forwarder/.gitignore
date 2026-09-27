@@ -1,0 +1,15 @@
+# 密钥配置（从 .env.example 复制后填写）
+.env
+
+# Telethon 会话文件，等同于登录凭证，切勿提交
+*.session
+*.session-journal
+*.session-shm
+*.session-wal
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
