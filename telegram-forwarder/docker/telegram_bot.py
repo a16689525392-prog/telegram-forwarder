@@ -1,11 +1,15 @@
 import os
 import re
+import sys
 import logging
 import random
 import asyncio
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telethon import TelegramClient, events
+
+# 密钥、代理、会话文件路径统一在 config.py 中填写
+from config import API_ID, API_HASH, BOT_TOKEN, PROXY, SESSION_FILE
 
 # 配置日志
 logging.basicConfig(
@@ -14,24 +18,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Telegram API 凭证
-# 从 https://my.telegram.org 获取
-API_ID = os.environ.get('API_ID', 'your_api_id')
-API_HASH = os.environ.get('API_HASH', 'your_api_hash')
-BOT_TOKEN = os.environ.get('BOT_TOKEN', 'your_bot_token')
+def check_config():
+    """启动前检查 config.py 是否已填写"""
+    missing = [name for name, value in (('API_ID', API_ID), ('API_HASH', API_HASH), ('BOT_TOKEN', BOT_TOKEN))
+               if not value]
+    if missing:
+        print(f"配置不完整，请先在 config.py 中填写：{'、'.join(missing)}")
+        sys.exit(1)
 
-# 代理配置（如果需要）
-# 设置为 None 或留空则不使用代理
-PROXY_TYPE = os.environ.get('PROXY_TYPE', '')
-PROXY_HOST = os.environ.get('PROXY_HOST', '')
-PROXY_PORT = os.environ.get('PROXY_PORT', '')
+check_config()
 
-proxy = None
-if PROXY_TYPE and PROXY_HOST and PROXY_PORT:
-    proxy = (PROXY_TYPE, PROXY_HOST, int(PROXY_PORT))
+# 会话文件所在目录不存在时自动创建
+os.makedirs(os.path.dirname(os.path.abspath(SESSION_FILE)), exist_ok=True)
 
 # 创建 Telethon 客户端
-client = TelegramClient('/app/session/message_forwarder_session', API_ID, API_HASH, proxy=proxy)
+client = TelegramClient(SESSION_FILE, API_ID, API_HASH, proxy=PROXY)
 
 # 消息链接正则表达式模式
 # 匹配格式：https://t.me/channel_name/message_id 或 https://t.me/c/channel_id/message_id
@@ -590,6 +591,16 @@ async def post_init(application: Application) -> None:
     ]
     await application.bot.set_my_commands(commands)
 
+async def login_telethon() -> None:
+    """登录 Telethon：会话文件已登录则直接使用该账号，否则（文件为空）使用 BOT_TOKEN 登录"""
+    await client.connect()
+    if await client.is_user_authorized():
+        me = await client.get_me()
+        print(f"已使用会话文件登录：{me.first_name}（ID: {me.id}）")
+    else:
+        await client.start(bot_token=BOT_TOKEN)
+        print("会话文件为空或未登录，已使用 BOT_TOKEN 登录")
+
 def main() -> None:
     # 创建应用程序，启用并发更新处理
     application = Application.builder().token(BOT_TOKEN).concurrent_updates(True).post_init(post_init).build()
@@ -612,7 +623,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
     # 启动 Telethon 客户端
-    client.start(bot_token=BOT_TOKEN)
+    client.loop.run_until_complete(login_telethon())
     print("机器人已启动")
     
     # 运行机器人直到按下 Ctrl-C

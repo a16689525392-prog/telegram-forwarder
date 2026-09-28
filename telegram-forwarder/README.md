@@ -13,39 +13,41 @@
 
 ## 🛠️ 技术栈
 
-- **Python 3.7+**
+- **Python 3.9+**
 - **python-telegram-bot**: 处理机器人API
 - **Telethon**: 访问Telegram客户端API
 - **python-socks**: 支持代理
 
 
+## 📁 目录结构
+
+项目提供两个版本，代码相同，只是运行方式和会话文件路径不同，按需选择其一：
+
+```text
+telegram-forwarder/
+├── docker/                    # Docker 专用版
+│   ├── config.py              # ← 在这里填写密钥
+│   ├── telegram_bot.py
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── requirements.txt
+│   └── session/
+│       └── message_forwarder_session.session   # 登录会话文件（默认为空）
+└── script/                    # 直接运行的脚本版
+    ├── config.py              # ← 在这里填写密钥
+    ├── telegram_bot.py
+    ├── start_bot.sh           # Mac/Linux 启动脚本
+    ├── start_bot.bat          # Windows 启动脚本
+    ├── requirements.txt
+    └── session/
+        └── message_forwarder_session.session   # 登录会话文件（默认为空）
+```
+
+> 修改机器人功能时，`docker/telegram_bot.py` 和 `script/telegram_bot.py` 需要同步修改。
+
 ## 🚀 快速开始
 
-### 1. 克隆项目
-
-```bash
-git clone https://github.com/zhaochengcube/telegram-msg-forwarder.git
-cd telegram-msg-forwarder
-```
-
-### 2. 安装依赖
-
-```bash
-# 创建虚拟环境
-python3 -m venv venv
-# 激活虚拟环境-Windows
-.\venv\Scripts\Acticate.ps1
-# 激活虚拟环境-Mac/Linux
-source venv/bin/activate
-# 安装依赖
-pip install python-telegram-bot telethon python-socks
-# 退出虚拟环境-Windows
-Ctrl+C
-# 退出虚拟环境-Mac/Linux
-deactivate
-```
-
-### 3. 获取API凭证
+### 1. 获取API凭证
 
 #### 获取Bot Token:
 1. 在Telegram中找到 [@BotFather](https://t.me/BotFather)
@@ -58,49 +60,67 @@ deactivate
 2. 登录你的Telegram账号
 3. 创建新应用获取API ID和API Hash
 
-### 4. 配置机器人
+### 2. 填写配置
 
-编辑 `telegram_bot.py` 文件中的配置项：
+编辑所用版本目录下的 `config.py`，把密钥直接写进去：
 
 ```python
-# Telegram API 凭证
-API_ID = 'your_api_id'
-API_HASH = 'your_api_hash'
-BOT_TOKEN = 'your_bot_token'
+API_ID = 12345678                      # 数字
+API_HASH = '0123456789abcdef...'       # 字符串
+BOT_TOKEN = '123456789:AAxxxxxxxx'     # 字符串
 
-# 代理配置（如果需要）
-# 端口号改为自己代理软件上的端口号
-proxy = ('http', '127.0.0.1', 7890)  # 或设置为 None
+# 代理（可选），不需要代理保持 None
+PROXY = ('http', '127.0.0.1', 7890)
 ```
 
-### 5. 运行机器人
+未填写 `API_ID` / `API_HASH` / `BOT_TOKEN` 时，程序启动会提示缺少哪一项并退出。
 
-- Windows: 双击 `start_bot.bat` 文件
-- Mac/Linux: 
-  - `chmod +x start_bot.sh`
-  - `./start_bot.sh` 
+> ⚠️ 如果仓库是公开的，填入真实密钥后不要提交 `config.py`，或者先把仓库设为私有。
 
-### 5.1 使用 Docker 运行（推荐）
+### 3. 登录会话文件
 
-密钥通过 `.env` 文件传入，`.env` 和 `session/` 下的会话文件都已被 `.gitignore` 忽略，不会提交到仓库：
+`session/message_forwarder_session.session` 是 Telethon 的登录会话文件，默认为空：
+
+- **文件为空**：启动时自动使用 `BOT_TOKEN` 登录，并把会话写入该文件
+- **替换为已登录账号的会话文件**：启动时直接使用该账号，不再用 `BOT_TOKEN` 登录
+
+替换时保持文件名不变（或同步修改 `config.py` 中的 `SESSION_FILE`），然后重启机器人即可。
+
+> ⚠️ 会话文件等同于账号登录凭证。为防止误提交真实会话文件，建议在仓库中执行一次：
+> ```bash
+> git update-index --skip-worktree docker/session/message_forwarder_session.session script/session/message_forwarder_session.session
+> ```
+
+### 4. 运行机器人
+
+#### 方式一：Docker 版
 
 ```bash
-cp .env.example .env   # 然后编辑 .env，填写 API_ID / API_HASH / BOT_TOKEN
-docker compose up -d --build
+cd docker
+docker compose up -d --build     # 修改 config.py 后需要重新执行
+docker compose logs -f           # 查看日志
 ```
 
+`docker/session/` 会挂载到容器内的 `/app/session/`，替换会话文件后执行 `docker compose restart` 即可生效。
 
-### 6. 设置机器人命令菜单（可选）
-1. 打开 [@BotFather](https://t.me/BotFather)
-2. 发送 `/setcommands`
-3. 选择你的机器人
-4. 输入命令列表
-```text
-/start - 启动机器人
-/help - 显示帮助信息
-/random - 随机发送指定数量的消息
-/clear - 删除机器人最近发送的所有消息
+#### 方式二：脚本版
+
+需要先安装 Python 3.9+。首次运行会自动创建虚拟环境 `venv` 并安装依赖。
+
+- Windows: 双击 `script/start_bot.bat`
+- Mac/Linux: `./script/start_bot.sh`
+
+也可以手动运行：
+
+```bash
+cd script
+pip install -r requirements.txt
+python3 telegram_bot.py
 ```
+
+### 5. 机器人命令菜单
+
+机器人启动时会自动设置命令菜单，无需再到 @BotFather 手动设置。
 
 ## 📖 使用说明
 
@@ -111,6 +131,8 @@ docker compose up -d --build
 | `/start`  | 启动机器人并显示欢迎信息       | `/start`                              |
 | `/help`   | 显示帮助信息和命令列表        | `/help`                               |
 | `/random` | 随机发送指定数量的消息(默认10条) | `/random https://t.me/channel/123 20` |
+| `/range`  | 按ID范围或数量批量转发消息     | `/range https://t.me/channel/123 100 120` |
+| `/stop`   | 停止当前正在进行的发送任务      | `/stop`                               |
 | `/clear`  | 删除机器人最近发送的所有消息     | `/clear`                              |
 
 ### 支持的链接格式

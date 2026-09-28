@@ -7,3 +7,4 @@ venv/
 *.session-shm
 .git/
 .gitignore
+session/

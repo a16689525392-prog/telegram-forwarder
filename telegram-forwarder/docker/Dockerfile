@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY telegram_bot.py .
+COPY config.py telegram_bot.py ./
 
 RUN mkdir -p /app/session
 

@@ -1,7 +1,5 @@
-# 密钥配置（从 .env.example 复制后填写）
-.env
-
-# Telethon 会话文件，等同于登录凭证，切勿提交
+# Telethon 会话文件等同于登录凭证，切勿提交
+# 仓库中只保留空的占位文件 docker/session/ 和 script/session/ 下的 message_forwarder_session.session
 *.session
 *.session-journal
 *.session-shm
@@ -12,4 +10,3 @@ __pycache__/
 *.py[cod]
 venv/
 .venv/
-env/

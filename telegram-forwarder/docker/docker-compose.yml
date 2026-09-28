@@ -3,11 +3,9 @@ services:
     build: .
     container_name: telegram-forwarder
     restart: unless-stopped
+    # 密钥在 config.py 中填写；登录会话文件在 session/ 目录，替换后重启容器即可生效
     volumes:
       - ./session:/app/session
-    # API_ID / API_HASH / BOT_TOKEN 等密钥放在 .env 中（从 .env.example 复制），不要提交到仓库
-    env_file:
-      - .env
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Asia/Shanghai
